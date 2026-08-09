@@ -115,7 +115,35 @@ def check_file(path, min_bytes=1, contains=None, allow_stub=False):
     return Result(f"file {path}", True, f"{size} bytes")
 
 
+def _pipe_masks_exit(cmd):
+    """True if a shell pipeline hides the exit code you probably care about.
+
+    `prog | tail` reports TAIL's status, not prog's. So a failing program inside a
+    pipeline looks like success, and every exit-code check downstream is meaningless.
+
+    This has bitten the author of this tool three times in one night: a test harness
+    that reported a passing check that had never run, twice; and a service-status
+    script that printed ACTIVE while reporting exit 0.
+
+    Excludes pipelines already protected by `set -o pipefail` or ${PIPESTATUS}.
+    """
+    if "|" not in cmd:
+        return False
+    # ||  is boolean OR, not a pipe.
+    stripped = cmd.replace("||", "")
+    if "|" not in stripped:
+        return False
+    if "pipefail" in cmd or "PIPESTATUS" in cmd:
+        return False
+    return True
+
+
 def check_cmd(cmd, expect_exit=0, no_fail_text=True, contains=None, timeout=300):
+    if _pipe_masks_exit(cmd) and expect_exit is not None:
+        return Result(f"cmd {cmd[:44]}", False,
+                      "PIPELINE MASKS THE EXIT CODE — this reports the LAST command's "
+                      "status, not the one you care about. Add 'set -o pipefail;' or "
+                      "check the program directly.")
     try:
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True,
                            timeout=timeout)
