@@ -1,5 +1,7 @@
 # claimcheck
 
+![License](https://img.shields.io/badge/license-MIT-blue) ![Python](https://img.shields.io/badge/python-3.8%2B-blue) ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+
 **Verify an AI agent actually did what it said it did.**
 
 For anyone running Claude Code, Cursor, Aider, or any agent unattended — and finding out
