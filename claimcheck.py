@@ -29,6 +29,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -136,8 +137,47 @@ def check_cmd(cmd, expect_exit=0, no_fail_text=True, contains=None, timeout=300)
     return Result(f"cmd {cmd[:44]}", True, f"exit {r.returncode}, output clean")
 
 
+def _github_api_content(url):
+    """For raw.githubusercontent URLs, read via the API instead of the CDN.
+
+    raw.githubusercontent.com caches for minutes. A check run right after a push reads
+    the OLD file and calls a true claim false — that happened in real use: the content
+    was on the remote, both HEADs matched, and this still said "body missing".
+    Cache-busting headers and query params did not beat it.
+
+    The API is authoritative and uncached. Falls back to the CDN if `gh` is absent.
+    Returns the body, or None to fall through.
+    """
+    m = re.match(r"https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)/(.+)", url)
+    if not m:
+        return None
+    owner, repo, ref, path = m.groups()
+    path = path.split("?")[0]
+    try:
+        r = subprocess.run(
+            ["gh", "api", f"repos/{owner}/{repo}/contents/{path}?ref={ref}",
+             "-q", ".content"],
+            capture_output=True, text=True, timeout=90)
+        if r.returncode != 0 or not r.stdout.strip():
+            return None
+        import base64
+        return base64.b64decode(r.stdout).decode("utf-8", "ignore")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def check_url(url, status=200, contains=None, timeout=25):
-    req = urllib.request.Request(url, headers={"User-Agent": "claimcheck/1.0"})
+    api_body = _github_api_content(url)
+    if api_body is not None:
+        if contains and contains not in api_body:
+            return Result(f"url {url[:44]}", False,
+                          f"body missing {contains[:40]!r} (via GitHub API)")
+        return Result(f"url {url[:44]}", True, "200 (via GitHub API, uncached)")
+
+    headers = {"User-Agent": "claimcheck/1.0",
+               "Cache-Control": "no-cache, max-age=0",
+               "Pragma": "no-cache"}
+    req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             code, body = r.getcode(), r.read().decode("utf-8", "ignore")
