@@ -127,6 +127,20 @@ claude -p "build the thing" && claimcheck run claims.json || echo "AGENT LIED"
 
 **Treat a pass as "the specific claims I made were true", never as "the work is good."**
 
+<!-- suite:start -->
+## Related tools
+
+Small, single-job CLIs for people running AI agents unattended. No dependencies, no telemetry, MIT.
+
+| Tool | What it does |
+|---|---|
+| [sheetcheck](https://github.com/DanteDeathmarch/sheetcheck) | Catch broken spreadsheet templates before a customer does |
+| [prepublish](https://github.com/DanteDeathmarch/prepublish) | Audit a repo before it goes public |
+| [keypulse](https://github.com/DanteDeathmarch/keypulse) | Find out which AI API keys are dead before your app does |
+
+Each one exists because the failure it prevents actually happened.
+<!-- suite:end -->
+
 ## License
 
 MIT.
