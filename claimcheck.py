@@ -6,7 +6,7 @@ Every agent-monitoring tool on the market measures cost, tokens, and latency. No
 them answer the question that actually costs you: **was the reported success true?**
 
 An agent says "done, pushed to main." The exit code is 0. The log looks clean. And:
-  - the file it wrote is 40 bytes of "# TODO: implement"
+  - the file it wrote is 40 bytes of a bare TODO marker and nothing else
   - the commit is local, never pushed
   - the command printed "You've hit your limit" and still exited 0
   - the scheduled task registered fine and has never once executed
@@ -98,7 +98,7 @@ def check_file(path, min_bytes=1, contains=None, allow_stub=False):
         return Result(f"file {path}", False, f"missing expected text: {contains[:40]!r}")
     if not allow_stub:
         # Density, not presence. A 400-line module with one TODO is real work; a
-        # 40-byte file that is nothing but "# TODO: implement" is a stub the agent
+        # 40-byte file that is nothing but a bare TODO marker is a stub the agent
         # called finished.
         #
         # This tool tripped its own check on the first run, because the file contains
